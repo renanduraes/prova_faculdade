@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contatos de Emergência - Estado</title>
+    <link rel="stylesheet" href="/static/css/contato.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+</head>
+<body>
+
+<div class="container">
+    <button class="btn-1" onclick="goBack()">
+        <i class="fas fa-arrow-left arr-2"></i>
+        <span class="text">Voltar</span>
+        <span class="circle"></span>
+        <i class="fas fa-arrow-left  arr-1"></i>
+      </button> <br>
+    <h1>Contatos de Emergência</h1>
+    <div id="contactDetails" class="contact-info"></div>
+    
+</div>
+
+<!-- Botão flutuante para adicionar novo contato -->
+<button class="floating-btn" onclick="openAddModal()">+</button>
+
+<!-- Modal para adicionar nova instituição -->
+<div id="addContactModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeAddModal()">&times;</span>
+        <h2>Adicionar Instituição</h2>
+        <form id="addContactForm">
+            <input type="text" id="addState" name="state" placeholder="Estado" readonly>
+            <input type="text" id="addInstituicao" name="instituicao" placeholder="Nome da Instituição" required>
+            <input type="text" id="addTelefone" name="telefone" placeholder="Telefone" required>
+            <input type="text" id="addArea" name="area" placeholder="Área de Atuação" required>
+            <textarea id="addHistoria" name="historia" rows="4" placeholder="História da Instituição" required></textarea>
+            <button type="submit">Enviar</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para editar instituição existente -->
+<div id="editContactModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeEditModal()">&times;</span>
+        <h2>Editar Instituição</h2>
+        <form id="editContactForm">
+            <input type="hidden" id="editContactId" name="contactId">
+            <input type="text" id="editState" name="state" placeholder="Estado" readonly>
+            <input type="text" id="editInstituicao" name="instituicao" placeholder="Nome da Instituição" required>
+            <input type="text" id="editTelefone" name="telefone" placeholder="Telefone" required>
+            <input type="text" id="editArea" name="area" placeholder="Área de Atuação" required>
+            <textarea id="editHistoria" name="historia" rows="4" placeholder="História da Instituição" required></textarea>
+            <button type="submit">Salvar</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentState = ''; // Variável global para armazenar o estado
+
+    function getQueryParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    function showContacts() {
+        // Recupera a sigla do estado da URL ou de um valor global
+        currentState = getQueryParameter('estado') || currentState;
+        if (currentState) {
+            document.getElementById('addState').value = currentState; // Preenche automaticamente o campo de estado no modal de adicionar
+        }
+
+        fetch(`/api/contatos/${currentState}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('contactDetails').innerHTML = `<p>${data.error}</p>`;
+                } else {
+                    let contactsHTML = '';
+                    data.forEach(contato => {
+                        contactsHTML += `
+                            <div class="contact-item" id="contact-${contato.id}">
+                                <h2>${contato.instituicao}</h2>
+                                <p><strong>Telefone:</strong> ${contato.telefone}</p>
+                                <p><strong>Área de atuação:</strong> ${contato.area}</p>
+                                <p><strong>História:</strong> ${contato.historia}</p>
+
+
+        
+<div class="botoes" >
+                                 <button class="btn-2" onclick="openEditModal(${contato.id}, '${contato.estado}', '${contato.instituicao}', '${contato.telefone}', '${contato.area}', '${contato.historia}')">
+            <span class="btn-2-bg">
+              <span class="btn-2-bg-layers">
+                <span class="btn-2-bg-layer btn-2-bg-layer-1 -purple"></span>
+                <span class="btn-2-bg-layer btn-2-bg-layer-2 -turquoise"></span>
+                <span class="btn-2-bg-layer btn-2-bg-layer-3 -yellow"></span>
+              </span>
+            </span>
+            <span class="btn-2-inner">
+              <span class="btn-2-inner-static" > <i class="fas fa-pencil-alt"></i> Editar</span>
+              <span class="btn-2-inner-hover" > <i class="fas fa-pencil-alt"></i> Editar </span>
+            </span>
+          </button>
+        <button onclick="deleteContact(${contato.id})" class="btn-6">
+            <span class="button-text"></span>
+            <span class="animation">
+              <span class="paper-wrapper">
+                <span class="paper"></span>
+              </span>
+              <span class="shredded-wrapper">
+                <span class="shredded"></span>
+              </span>
+              <span class="lid"></span>
+              <span class="can">
+                <span class="filler"></span>
+              </span>
+            </span>
+          </button>
+
+          </div>
+                            </div>
+                            <hr>
+                        `;
+                    });
+                    document.getElementById('contactDetails').innerHTML = contactsHTML;
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao buscar contatos:', error);
+            });
+    }
+
+    function openAddModal() {
+        document.getElementById('addContactForm').reset(); // Limpa o formulário de adição
+        const state = currentState || getQueryParameter('estado'); // Atribui o estado à variável global
+        document.getElementById('addState').value = state;
+        document.getElementById('addContactModal').style.display = 'block';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addContactModal').style.display = 'none';
+    }
+
+    function openEditModal(id, estado, instituicao, telefone, area, historia) {
+        // Verifica se o estado está disponível na URL ou no objeto de contato
+        const stateToUse = currentState || getQueryParameter('estado');
+        
+        // Preenche os campos do formulário de edição com os dados do contato
+        document.getElementById('editContactId').value = id;
+        document.getElementById('editState').value = stateToUse; // A sigla do estado aqui
+        document.getElementById('editInstituicao').value = instituicao;
+        document.getElementById('editTelefone').value = telefone;
+        document.getElementById('editArea').value = area;
+        document.getElementById('editHistoria').value = historia;
+
+        // Abre o modal de edição
+        document.getElementById('editContactModal').style.display = 'block';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editContactModal').style.display = 'none';
+    }
+
+    function goBack() {
+        window.history.back();
+    }
+
+    function deleteContact(id) {
+        if (confirm('Você tem certeza que deseja apagar este contato?')) {
+            fetch('/apagar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id_contato: id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert('Contato apagado com sucesso!');
+                    document.getElementById(`contact-${id}`).remove();
+                } else {
+                    alert('Erro ao apagar o contato.');
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao apagar contato:', error);
+            });
+        }
+    }
+
+    document.getElementById('addContactForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const state = document.getElementById('addState').value;
+        const instituicao = document.getElementById('addInstituicao').value;
+        const telefone = document.getElementById('addTelefone').value;
+        const area = document.getElementById('addArea').value;
+        const historia = document.getElementById('addHistoria').value;
+
+        fetch('/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                estado: state,
+                instituicao: instituicao,
+                telefone: telefone,
+                area: area,
+                historia: historia
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert('Contato adicionado com sucesso!');
+                closeAddModal();
+                showContacts();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao adicionar contato:', error);
+        });
+    });
+
+    document.getElementById('editContactForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const id = document.getElementById('editContactId').value;
+        const state = document.getElementById('editState').value;
+        const instituicao = document.getElementById('editInstituicao').value;
+        const telefone = document.getElementById('editTelefone').value;
+        const area = document.getElementById('editArea').value;
+        const historia = document.getElementById('editHistoria').value;
+
+        fetch('/editar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id_contato: id,
+                estado: state,
+                instituicao: instituicao,
+                telefone: telefone,
+                area: area,
+                historia: historia
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert('Contato editado com sucesso!');
+                closeEditModal();
+                showContacts();
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao editar contato:', error);
+        });
+    });
+
+    showContacts();
+</script>
+
+</body>
+</html>
